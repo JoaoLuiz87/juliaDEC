@@ -25,13 +25,6 @@ Cochain(values::Vector{T}, k::Int, is_primal::Bool) where {T} = Cochain{T}(value
 primal_cochain(vec::Vector{T}, k::Int) where {T} = Cochain(vec, k, true)
 dual_cochain(vec::Vector{T}, k::Int) where {T} = Cochain(vec, k, false)
 
-struct DualEdge{T}
-    index::Int
-    vertices_pos::Vector{Vector{T}}
-    vertices_idx::Tuple{Int, Int}
-    orientation::Int
-end
-
 """
     get_cell_edge_orientations(mesh::VoronoiMesh, cell_idx::Int)
 
@@ -85,10 +78,10 @@ function get_triangle(triangle_idx::Union{Int32, Int64},
     edge_orientations = Vector{Int}(undef, 3)
 
     v1, v2, v3 = cellsOnVertex[triangle_idx]
-    circumcenter = TensorsLite.Vec(xVertex[triangle_idx], yVertex[triangle_idx], 0.0)
-    p1_raw = TensorsLite.Vec(xCell[v1], yCell[v1], 0.0)
-    p2_raw = TensorsLite.Vec(xCell[v2], yCell[v2], 0.0)
-    p3_raw = TensorsLite.Vec(xCell[v3], yCell[v3], 0.0)
+    circumcenter = TensorsLite.Vec(x = xVertex[triangle_idx], y = yVertex[triangle_idx])
+    p1_raw = TensorsLite.Vec(x = xCell[v1], y = yCell[v1])
+    p2_raw = TensorsLite.Vec(x = xCell[v2], y = yCell[v2])
+    p3_raw = TensorsLite.Vec(x = xCell[v3], y = yCell[v3])
     
     p1_closest = closest(circumcenter, p1_raw, xp, yp)  
     p2_closest = closest(circumcenter, p2_raw, xp, yp)
@@ -354,18 +347,36 @@ function gaussian_quadrature_points_and_weights(n::Int)
         weights = [(18-sqrt(30))/36, (18+sqrt(30))/36,
                   (18+sqrt(30))/36, (18-sqrt(30))/36]
         return (points, weights)
+
+    elseif n == 5
+        # 5-point Gaussian quadrature on [-1,1]
+        points = [
+            -sqrt(5 + 2*sqrt(10/7))/3,
+            -sqrt(5 - 2*sqrt(10/7))/3,
+            0.0,
+            sqrt(5 - 2*sqrt(10/7))/3,
+            sqrt(5 + 2*sqrt(10/7))/3
+        ]
+        weights = [
+            (322 - 13*sqrt(70))/900,
+            (322 + 13*sqrt(70))/900,
+            128/225,
+            (322 + 13*sqrt(70))/900,
+            (322 - 13*sqrt(70))/900
+        ]
+        return (points, weights)
     else
         error("Gaussian quadrature not implemented for n > 4")
     end
 end
 
-function edge_integral(v::Function, p1::Vector{T}, p2::Vector{T}, xp::Float64, yp::Float64, n::Int=3) where T
+function edge_integral(v::Function, p1::Vector{T}, p2::Vector{T}, xp::Float64, yp::Float64, n::Int=4) where T
     # Compute the integral of v along the edge from p1 to p2 using n-point Gaussian quadrature
-    p1_vec = TensorsLite.Vec(p1..., 0.0)
-    p2_vec = TensorsLite.Vec(p2..., 0.0)
+    #p1_vec = TensorsLite.Vec(p1..., 0.0)
+    #p2_vec = TensorsLite.Vec(p2..., 0.0)
     
-    p2_closest = closest(p1_vec, p2_vec, xp, yp)[1:2]
-    edge_vector = p2_closest - p1
+    #p2_closest = closest(p1_vec, p2_vec, xp, yp)[1:2]
+    edge_vector = p2 - p1
     points, weights = gaussian_quadrature_points_and_weights(n)
     
     integral = 0.0
@@ -482,23 +493,7 @@ end
 #---------------------------------------------------------------------------------------------------
 #Whitney interpolation
 
-function whitney_reconstruction_on_x_periodic(x::Vector{T}, p1::Vector{T}, p2::Vector{T}, p3::Vector{T}, 
-xp::T, yp::T, hodge_applied=false) where T
-# Convert points to Vec type for TensorsLiteGeometry functions
-x_vec = TensorsLite.Vec(x..., 0.0)
-p1_vec = TensorsLite.Vec(p1..., 0.0)
-p2_vec = TensorsLite.Vec(p2..., 0.0)
-p3_vec = TensorsLite.Vec(p3..., 0.0)
-
-
-# Get closest points relative to p1
-p1_closest = closest(x_vec, p1_vec, xp, yp)
-p2_closest = closest(p1_closest, p2_vec, xp, yp)
-p3_closest = closest(p1_closest, p3_vec, xp, yp)
-
-p1 = p1_closest[1:2]
-p2 = p2_closest[1:2]
-p3 = p3_closest[1:2]
+function whitney_reconstruction_on_x_periodic(x::Vector{T}, p1::Vector{T}, p2::Vector{T}, p3::Vector{T}, hodge_applied=false) where T
 
 # Use closest points for computation
 x_A, y_A = p1
@@ -538,69 +533,23 @@ p3::Vector{Float64},
 hodge_applied=false) = whitney_reconstruction_on_x_periodic([x...], p1, p2, p3, hodge_applied)
 
 
-function whitney_basis_functions_on_triangle_on_x(x::Vector{T}, triangle_idx::Int, 
-    cellsOnVertex::Vector{Tuple{Int32, Int32, Int32}}, 
-    edgesOnVertex::Vector{Tuple{Int32, Int32, Int32}}, 
-    cellsOnEdge::Vector{Tuple{Int32, Int32}}, 
-    xVertex::Vector{T}, 
-    yVertex::Vector{T}, 
-    xCell::Vector{T}, 
-    yCell::Vector{T},
-    xp::T,
-    yp::T,
-    hodge_applied=false) where T
+function whitney_basis_functions_on_triangle_on_x(mesh::VoronoiMesh, x::Vector{T}, triangle_idx::Int, hodge_applied=false) where T
 
-    points, edge_indices, edge_orientations = get_triangle(triangle_idx, cellsOnVertex, edgesOnVertex, cellsOnEdge, xVertex, yVertex, xCell, yCell, xp, yp)
-    basis_functions = whitney_reconstruction_on_x_periodic(x, points[1], points[2], points[3], xp, yp, hodge_applied)
+    points, edge_indices, edge_orientations = get_triangle(triangle_idx, triangle_idx)
+    p = TensorsLite.Vec(x = x[1], y = x[2])
+    new_x = closest(mesh.vertices.position[triangle_idx], p, mesh.x_period, mesh.y_period)
+    basis_functions = whitney_reconstruction_on_x_periodic(new_x, points[1], points[2], points[3], hodge_applied)
     
     return basis_functions, edge_indices, edge_orientations
 end
 
-whitney_basis_functions_on_triangle_on_x(x::Vector{T}, triangle_idx::Int, mesh::VoronoiMesh, hodge_applied=false) where T = 
-    whitney_basis_functions_on_triangle_on_x(x, triangle_idx, mesh.vertices.cells, mesh.vertices.edges, 
-    mesh.edges.cells,mesh.vertices.position.x, 
-    mesh.vertices.position.y, mesh.cells.position.x, 
-    mesh.cells.position.y, mesh.x_period, mesh.y_period, hodge_applied)
+function whitney_basis_functions_on_triangle(mesh::VoronoiMesh, triangle_idx::Int, hodge_applied=false)
 
-
-function whitney_basis_functions_on_triangle(triangle_idx::Int, 
-    cellsOnVertex::Vector{Tuple{Int32, Int32, Int32}}, 
-    edgesOnVertex::Vector{Tuple{Int32, Int32, Int32}}, 
-    cellsOnEdge::Vector{Tuple{Int32, Int32}}, 
-    xVertex::Vector{T}, 
-    yVertex::Vector{T}, 
-    xCell::Vector{T}, 
-    yCell::Vector{T},
-    xp::T,
-    yp::T,
-    hodge_applied=false) where T
-
-    circumcenter = [xVertex[triangle_idx], yVertex[triangle_idx]]
-    points, edge_indices, edge_orientations = get_triangle(triangle_idx, cellsOnVertex, edgesOnVertex, cellsOnEdge, xVertex, yVertex, xCell, yCell, xp, yp)
-    basis_functions = whitney_reconstruction_on_x_periodic(circumcenter, points[1], points[2], points[3], xp, yp, hodge_applied)    
+    circumcenter = [mesh.vertices.position.x[triangle_idx], mesh.vertices.position.y[triangle_idx]]
+    points, edge_indices, edge_orientations = get_triangle(mesh, triangle_idx)
+    basis_functions = whitney_reconstruction_on_x_periodic(circumcenter, points[1], points[2], points[3], hodge_applied)    
     return basis_functions, edge_indices, edge_orientations
-end
-
-whitney_basis_functions_on_triangle(triangle_idx::Int, mesh::VoronoiMesh, hodge_applied=false) = 
-    whitney_basis_functions_on_triangle(triangle_idx, mesh.vertices.cells, mesh.vertices.edges, 
-                                        mesh.edges.cells, mesh.vertices.position.x, 
-                                        mesh.vertices.position.y, mesh.cells.position.x, 
-                                        mesh.cells.position.y, mesh.x_period, mesh.y_period, hodge_applied)   
-
-function whitney_basis_functions_on_x(x::Vector{Vector{T}}, mesh::VoronoiMesh, hodge_applied=false) where T
-    basis_functions = Vector{Matrix{Float64}}(undef, mesh.nVertices)
-    edge_indices = Vector{Vector{Int}}(undef, mesh.nVertices)
-    edge_orientations = Vector{Vector{Int}}(undef, mesh.nVertices)
-
-    for i in 1:mesh.nVertices
-        basis_functions[i], edge_indices[i], edge_orientations[i] = 
-        whitney_basis_functions_on_triangle_on_x(x[i], i, mesh.vertices.cells, 
-        mesh.vertices.edges, mesh.edges.cells, mesh.vertices.position.x, 
-        mesh.vertices.position.y, mesh.cells.position.x, 
-        mesh.cells.position.y, mesh.x_period, mesh.y_period, hodge_applied)
-    end
-    return basis_functions, edge_indices, edge_orientations
-end
+end 
 
 function whitney_basis_functions(mesh::VoronoiMesh, hodge_applied=false)
     basis_functions = Vector{Matrix{Float64}}(undef, mesh.vertices.n)
@@ -609,26 +558,23 @@ function whitney_basis_functions(mesh::VoronoiMesh, hodge_applied=false)
 
     for i in 1:mesh.vertices.n
         basis_functions[i], edge_indices[i], edge_orientations[i] = 
-        whitney_basis_functions_on_triangle(i, mesh.vertices.cells, mesh.vertices.edges, 
-        mesh.edges.cells, mesh.vertices.position.x, 
-        mesh.vertices.position.y, mesh.cells.position.x, 
-        mesh.cells.position.y, mesh.x_period, mesh.y_period, hodge_applied)
+        whitney_basis_functions_on_triangle(mesh, i, hodge_applied)
     end
     return basis_functions, edge_indices, edge_orientations
 end
 
-function whitney_interpolation_on_triangle(basis_functions::Matrix{Float64}, 
-    edge_indices::Vector{Int}, edge_orientations::Vector{Int}, values::Vector{Float64})
+function whitney_interpolation_on_triangle(mesh::VoronoiMesh, triangle_idx::Int, v::Cochain{T}) where T
+    basis_functions, edge_indices, edge_orientations = whitney_basis_functions_on_triangle(mesh, triangle_idx)
     interpolation_vector = zeros(Float64, 2)
     for i in 1:3
-        product = (basis_functions[i,:] * values[edge_indices[i]]) * edge_orientations[i]
+        product = (basis_functions[i,:] * v.values[edge_indices[i]]) * edge_orientations[i]
         interpolation_vector += product
     end
     return interpolation_vector
 end
 
 function whitney_interpolation(mesh::VoronoiMesh, v::Cochain{T}) where T
-    basis_functions, edge_indices, edge_orientations = whitney_basis_functions(mesh, false)
+    basis_functions, edge_indices, edge_orientations = whitney_basis_functions(mesh)
     values = [v.values[[edge_indices[i]...]] for i in 1:mesh.vertices.n]
     interpolation_vectors = zeros(Float64, (mesh.vertices.n, 2))
     for i in 1:mesh.vertices.n
@@ -642,20 +588,18 @@ end
 
 function whitney_integration_on_edge(mesh::VoronoiMesh, edge_idx::Int)
     # Get the dual edge (hexagon edge) endpoints
+    xp = mesh.x_period
+    yp = mesh.y_period
     edge_position = mesh.edges.position[edge_idx]
     v1, v2 = mesh.edges.vertices[edge_idx]
-
-    p1_raw = TensorsLite.Vec(mesh.vertices.position.x[v1], mesh.vertices.position.y[v1], 0.0)
-    p2_raw = TensorsLite.Vec(mesh.vertices.position.x[v2], mesh.vertices.position.y[v2], 0.0)
     
     # Get closest periodic points relative to p1
-    p1_vec = closest(edge_position, p1_raw, mesh.x_period, mesh.y_period)
-    p2_vec = closest(edge_position, p2_raw, mesh.x_period, mesh.y_period)
+    p1_vec = closest(edge_position, mesh.vertices.position[v1], xp, yp)
+    p2_vec = closest(edge_position, mesh.vertices.position[v2], xp, yp)
     
     p1 = [p1_vec[1], p1_vec[2]]
     p2 = [p2_vec[1], p2_vec[2]]
-    midpoint = (p1 + p2) / 2
-
+    epos = [edge_position[1], edge_position[2]]
     weights_vec = Vector{Float64}(undef, 6)
     edge_indices_vec = Vector{Int}(undef, 6)
 
@@ -663,28 +607,49 @@ function whitney_integration_on_edge(mesh::VoronoiMesh, edge_idx::Int)
                                                     mesh.vertices.cells, mesh.vertices.edges, mesh.edges.cells, 
                                                     mesh.vertices.position.x, mesh.vertices.position.y, 
                                                     mesh.cells.position.x, mesh.cells.position.y, 
-                                                    mesh.x_period, mesh.y_period)
-    integral1 = [edge_integral(x -> whitney_reconstruction_on_x_periodic(x, points1[1], points1[2], points1[3], mesh.x_period, mesh.y_period, true)[i,:]*orientations1[i],
-                                    p1, midpoint, 
-                                    mesh.x_period,  
-                                    mesh.y_period) for i in 1:3]
+                                                    xp, yp)
+    
+    vec1_p1 = TensorsLite.Vec(x=points1[1][1], y=points1[1][2])
+    vec1_p2 = TensorsLite.Vec(x=points1[2][1], y=points1[2][2])
+    vec1_p3 = TensorsLite.Vec(x=points1[3][1], y=points1[3][2])
+    periodic1_p1 = closest(edge_position, vec1_p1, xp, yp)
+    periodic1_p2 = closest(edge_position, vec1_p2, xp, yp)
+    periodic1_p3 = closest(edge_position, vec1_p3, xp, yp)
+    periodic1_p1 = [periodic1_p1[1], periodic1_p1[2]]
+    periodic1_p2 = [periodic1_p2[1], periodic1_p2[2]]
+    periodic1_p3 = [periodic1_p3[1], periodic1_p3[2]]
+
+
+    integral1 = [edge_integral(x -> whitney_reconstruction_on_x_periodic(x, periodic1_p1, periodic1_p2, periodic1_p3, true)[i,:]*orientations1[i],
+                                    p1, epos, 
+                                    xp, yp) for i in 1:3]
 
     
     points2, edge_indices2, orientations2 = get_triangle(v2, 
                                                     mesh.vertices.cells, mesh.vertices.edges, mesh.edges.cells, 
                                                     mesh.vertices.position.x, mesh.vertices.position.y, 
                                                     mesh.cells.position.x, mesh.cells.position.y, 
-                                                    mesh.x_period, mesh.y_period)
-    integral2 = [edge_integral(x -> whitney_reconstruction_on_x_periodic(x, points2[1], points2[2], points2[3], mesh.x_period, mesh.y_period, true)[i,:]*orientations2[i],
-                                    midpoint, p2, 
-                                    mesh.x_period, 
-                                    mesh.y_period) for i in 1:3]
+                                                    xp, yp)
+
+    vec2_p1 = TensorsLite.Vec(x=points2[1][1], y=points2[1][2])
+    vec2_p2 = TensorsLite.Vec(x=points2[2][1], y=points2[2][2])
+    vec2_p3 = TensorsLite.Vec(x=points2[3][1], y=points2[3][2])
+    periodic2_p1 = closest(edge_position, vec2_p1, xp, yp)
+    periodic2_p2 = closest(edge_position, vec2_p2, xp, yp)
+    periodic2_p3 = closest(edge_position, vec2_p3, xp, yp)
+    periodic2_p1 = [periodic2_p1[1], periodic2_p1[2]]
+    periodic2_p2 = [periodic2_p2[1], periodic2_p2[2]]
+    periodic2_p3 = [periodic2_p3[1], periodic2_p3[2]]
+
+    integral2 = [edge_integral(x -> whitney_reconstruction_on_x_periodic(x, periodic2_p1, periodic2_p2, periodic2_p3, true)[i,:]*orientations2[i],
+                                    epos, p2, 
+                                    xp, yp) for i in 1:3]
     
     weights_vec[1:3] = integral1
     edge_indices_vec[1:3] = edge_indices1
     weights_vec[4:6] = integral2    
     edge_indices_vec[4:6] = edge_indices2
-        
+
     return weights_vec, edge_indices_vec
 end
 
@@ -809,12 +774,12 @@ function get_edge_info(mesh::VoronoiMesh, edge_index::Int, cochain::Cochain{T}) 
 
     if cochain.is_primal #If the cochain is primal, we need to get the triangle edges information
         v1, v2 = mesh.edges.cells[edge_index]
-        p1_raw = TensorsLite.Vec(mesh.cells.position.x[v1], mesh.cells.position.y[v1], 0.0)
-        p2_raw = TensorsLite.Vec(mesh.cells.position.x[v2], mesh.cells.position.y[v2], 0.0)
+        p1_raw = TensorsLite.Vec(x = mesh.cells.position.x[v1], y = mesh.cells.position.y[v1])
+        p2_raw = TensorsLite.Vec(x = mesh.cells.position.x[v2], y = mesh.cells.position.y[v2])
     else
         v1, v2 = mesh.edges.vertices[edge_index] #If the cochain is dual, we need to get the cells edges information
-        p1_raw = TensorsLite.Vec(mesh.vertices.position.x[v1], mesh.vertices.position.y[v1], 0.0)
-        p2_raw = TensorsLite.Vec(mesh.vertices.position.x[v2], mesh.vertices.position.y[v2], 0.0)
+        p1_raw = TensorsLite.Vec(x = mesh.vertices.position.x[v1], y = mesh.vertices.position.y[v1])
+        p2_raw = TensorsLite.Vec(x = mesh.vertices.position.x[v2], y = mesh.vertices.position.y[v2])
     end
     
     # Get closest periodic points relative to p1
@@ -830,6 +795,29 @@ function get_edge_info(mesh::VoronoiMesh, edge_index::Int, cochain::Cochain{T}) 
     midpoint = (p1 + p2) / 2
     value = cochain.values[edge_index]
     return (midpoint, value, tangent_vector)
+end
+
+function get_edge_info(mesh::VoronoiMesh, edge_index::Int, is_primal::Bool=true) 
+    edge_position = mesh.edges.position[edge_index]
+
+    if is_primal #If the cochain is primal, we need to get the triangle edges information
+        v1, v2 = mesh.edges.cells[edge_index]
+        p1 = mesh.cells.position[v1]
+        p2 = mesh.cells.position[v2]
+    else
+        v1, v2 = mesh.edges.vertices[edge_index] #If the cochain is dual, we need to get the cells edges information
+        p1 = mesh.vertices.position[v1]
+        p2 = mesh.vertices.position[v2]
+    end
+    
+    # Get closest periodic points relative to p1
+    p1_periodic = closest(edge_position, p1, mesh.x_period, mesh.y_period)
+    p2_periodic = closest(edge_position, p2, mesh.x_period, mesh.y_period)
+    
+    edge_vector = p2_periodic - p1_periodic
+    tangent_vector = edge_vector
+    midpoint = (p1_periodic + p2_periodic) / 2
+    return (midpoint, tangent_vector)
 end
 
 function get_edge_info(mesh::VoronoiMesh, v::Cochain{T}) where T
@@ -875,7 +863,7 @@ function integrate_basic_fields_primal_edge(mesh::VoronoiMesh, edge_idx::Int, x0
     else
         f = [f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12]
     end
-    edge_pos = mesh.edges.position[edge_idx]
+    edge_pos = closest(x0, mesh.edges.position[edge_idx], mesh.x_period, mesh.y_period)
 
     # Compute the hodge from dual to primal, by integrating over the primal edge
     v1, v2 = mesh.edges.cells[edge_idx]
@@ -884,7 +872,7 @@ function integrate_basic_fields_primal_edge(mesh::VoronoiMesh, edge_idx::Int, x0
     p1_primal = [p1_primal[1], p1_primal[2]]
     p2_primal = [p2_primal[1], p2_primal[2]]
 
-    integration_values_on_primal = [edge_integral(f[j], p1_primal, p2_primal, mesh.x_period, mesh.y_period) for j = 1:length(f)]
+    integration_values_on_primal = [edge_integral(f[j], p1_primal, p2_primal, mesh.x_period, mesh.y_period) for j in eachindex(f)]
     
     return integration_values_on_primal
 end
@@ -923,7 +911,7 @@ function integrate_basic_fields_dual_edge(mesh::VoronoiMesh, edge_idx::Int, x0::
     else
         f = [star_f1, star_f2, star_f3, star_f4, star_f5, star_f6, star_f7, star_f8, star_f9, star_f10, star_f11, star_f12]
     end
-    edge_pos = mesh.edges.position[edge_idx]
+    edge_pos = closest(x0, mesh.edges.position[edge_idx], mesh.x_period, mesh.y_period)
 
     # Compute the hodge from dual to primal, by integrating over the primal edge
     v1, v2 = mesh.edges.vertices[edge_idx]
@@ -932,7 +920,7 @@ function integrate_basic_fields_dual_edge(mesh::VoronoiMesh, edge_idx::Int, x0::
     p1_primal = [p1_primal[1], p1_primal[2]]
     p2_primal = [p2_primal[1], p2_primal[2]]
 
-    integration_values_on_primal = [edge_integral(f[j], p1_primal, p2_primal, mesh.x_period, mesh.y_period) for j = 1:length(f)]
+    integration_values_on_primal = [edge_integral(f[j], p1_primal, p2_primal, mesh.x_period, mesh.y_period) for j in eachindex(f)]
     
     return integration_values_on_primal
 end
@@ -1102,33 +1090,6 @@ end
 
 
 function hodge_star_lsq_operator(mesh::VoronoiMesh, edge_index::Int, primal_to_dual::Bool=true, only_linear::Bool=true)
-    
-    #function get_edge(mesh::VoronoiMesh, edge_index::Int)
-    #    edge_position = mesh.edges.position[edge_index]
-    
-    #    if on_primal_edge # We will integrate over the dual edge
-    #        v1, v2 = mesh.edges.cells[edge_index]
-    #        p1_raw = TensorsLite.Vec(mesh.cells.position.x[v1], mesh.cells.position.y[v1], 0.0)
-    #        p2_raw = TensorsLite.Vec(mesh.cells.position.x[v2], mesh.cells.position.y[v2], 0.0)
-    #    else # We will integrate over the primal edge
-    #        v1, v2 = mesh.edges.vertices[edge_index]
-    #        p1_raw = TensorsLite.Vec(mesh.vertices.position.x[v1], mesh.vertices.position.y[v1], 0.0)
-    #        p2_raw = TensorsLite.Vec(mesh.vertices.position.x[v2], mesh.vertices.position.y[v2], 0.0)
-    #    end
-        
-    #    # Get closest periodic points relative to p1
-    #    p1_periodic = closest(edge_position, p1_raw, mesh.x_period, mesh.y_period)
-    #    p2_periodic = closest(edge_position, p2_raw, mesh.x_period, mesh.y_period)
-        
-    #    # Convert to 2D vectors
-    #    p1 = [p1_periodic[1], p1_periodic[2]]
-    #    p2 = [p2_periodic[1], p2_periodic[2]]
-        
-    #    edge_vector = p2 - p1
-    #    tangent_vector = edge_vector
-    #    midpoint = (p1 + p2) / 2
-    #    return (midpoint, tangent_vector)
-    #end
     x0 = mesh.edges.position[edge_index]
     
     # Construct the A matrix
@@ -1285,6 +1246,125 @@ function wedge(mesh::VoronoiMesh, α::Cochain{T}, β::Cochain{T}) where T
         error("Invalid wedge product")
     end
 end
+####################################################################
+######################### POST PROCESSING ##########################
+####################################################################
+
+function get_square_vertices(mesh::VoronoiMesh)
+    # Get the domain dimensions from the mesh
+    x_period = mesh.x_period
+    y_period = mesh.y_period
+    h = maximum(mesh.edges.lengthDual)
+
+    # Calculate the number of squares in each direction
+    # Each square has side length h/4
+    square_size = h/4
+    nx = ceil(Int, x_period / square_size)
+    ny = ceil(Int, y_period / square_size)
+    
+    # Adjust square_size to exactly fit the domain
+    square_size_x = x_period / nx
+    square_size_y = y_period / ny
+    
+    # Initialize array to store square vertices
+    squares = Vector{Vector{Vector{Float64}}}()
+    
+    # Generate the squares
+    for i in 0:(nx-1)
+        for j in 0:(ny-1)
+            # Calculate the four vertices of this square
+            v1 = [i * square_size_x, j * square_size_y]
+            v2 = [(i+1) * square_size_x, j * square_size_y]
+            v3 = [(i+1) * square_size_x, (j+1) * square_size_y]
+            v4 = [i * square_size_x, (j+1) * square_size_y]
+            
+            # Calculate the midpoint
+            midpoint = [(i+0.5) * square_size_x, (j+0.5) * square_size_y]
+            
+            # Add the square (vertices and midpoint)
+            push!(squares, [v1, v2, v3, v4, midpoint])
+        end
+    end
+    
+    return squares
+end
+
+function assign_cochain_values_to_squares(mesh::VoronoiMesh, cochain::Cochain{T}) where T
+    # Check if the cochain is defined on edges
+    if cochain.k != 1
+        error("This function only works with 1-cochains (defined on edges)")
+    end
+    
+    # Get squares with their vertices and midpoints
+    squares = get_square_vertices(mesh)
+    
+    # Initialize array to store values for each square
+    square_values = Vector{T}(undef, length(squares))
+    
+    # For each square, find the closest edge and assign its cochain value
+    for (i, square) in enumerate(squares)
+        # Get the midpoint of the square (5th element in the square array)
+        midpoint = square[5]
+        
+        # Find the closest edge
+        closest_edge_idx = 1
+        min_distance = Inf
+        
+        for edge_idx in 1:mesh.edges.n
+            # Get edge position
+            edge_pos = mesh.edges.position[edge_idx]
+            
+            # Calculate distance to midpoint
+            distance = sqrt((edge_pos[1] - midpoint[1])^2 + (edge_pos[2] - midpoint[2])^2)
+
+            # Update closest edge if this one is closer
+            if distance < min_distance
+                min_distance = distance
+                closest_edge_idx = edge_idx
+            end
+        end
+        
+        # Assign the cochain value of the closest edge to this square
+        square_values[i] = cochain.values[closest_edge_idx]
+    end
+    
+    return squares, square_values
+end
+
+function plot_cochain_on_squares(mesh::VoronoiMesh, cochain::Cochain{T}, colormap::Symbol=:viridis, title::String="") where T
+    # Get squares and their values
+    squares, values = assign_cochain_values_to_squares(mesh, cochain)
+    
+    # Create a figure
+    fig = Figure(size=(800, 800))
+    ax = Axis(fig[1, 1], aspect=1, title=title)
+    
+    # Normalize values for coloring
+    min_val = minimum(values)
+    max_val = maximum(values)
+    
+    # Plot each square with its value as color
+    for (i, square) in enumerate(squares)
+        # Extract vertices
+        vertices = square[1:4]
+        
+        # Add the first vertex again to close the polygon
+        push!(vertices, vertices[1])
+        
+        # Extract x and y coordinates
+        x_coords = [v[1] for v in vertices]
+        y_coords = [v[2] for v in vertices]
+        
+        # Plot the square
+        poly!(ax, x_coords, y_coords, color=values[i], colormap=colormap, colorrange=(min_val, max_val))
+    end
+    
+    # Add a colorbar
+    Colorbar(fig[1, 2], limits=(min_val, max_val), colormap=colormap)
+    
+    return fig, ax
+end
+
 #----------------------------------------------------------------------------------------------------
 
 function compute_error_on_circumcenter(mesh::VoronoiMesh, v::Matrix{T}, field::Function) where T
@@ -1296,6 +1376,11 @@ end
 
 function L2_errorOnVertices(mesh::VoronoiMesh, a::Vector{T}, b::Vector{T}) where T
     errors = [((a[i] - b[i])^2) * mesh.cells.area[i] for i in 1:mesh.cells.n]
+    return sqrt(sum(errors))
+end
+
+function L2_errorOnEdges(mesh::VoronoiMesh, a::Vector{T}, b::Vector{T}) where T
+    errors = [((a[i] - b[i])^2) * (mesh.edges.lengthDual[i]/mesh.edges.length[i]) for i in 1:mesh.edges.n]
     return sqrt(sum(errors))
 end
 
@@ -1365,20 +1450,7 @@ end
 
 Plot the triangle mesh showing the simplices. Optionally show vertex indices and color triangles.
 """
-function plot_cochain(cochain::Cochain, mesh::VoronoiMesh, colormap::Symbol=:viridis)
-    fig = Figure()
-    ax  = Axis(fig[1,1], 
-        aspect=DataAspect(),
-        xlabel="x",
-        ylabel="y",
-        title="Solution",
-        titlesize=20,          # Title font size
-        xlabelsize=16,         # x-axis label font size
-        ylabelsize=16,         # y-axis label font size
-        xticklabelsize=12,     # x-axis tick label font size
-        yticklabelsize=12,
-        xticks = 0:0.2:1.0,
-        yticks = 0:0.2:1.0)  
+function plot_cochain!(ax, cochain::Cochain, mesh::VoronoiMesh, colormap::Symbol=:viridis) 
     
     # Plot each triangle
 
@@ -1409,10 +1481,11 @@ function plot_cochain(cochain::Cochain, mesh::VoronoiMesh, colormap::Symbol=:vir
                 points_y = [p[2] for p in points]
                 push!(points_x, points_x[1])
                 push!(points_y, points_y[1])
+                vmin, vmax = extrema(cochain.values)
+                poly!(ax, points_x, points_y, color=cochain.values[i], colormap=colormap, colorrange=(vmin, vmax))
+            
             end
 
-            vmin, vmax = extrema(cochain.values)
-            poly!(ax, points_x, points_y, color=cochain.values[i], colormap=colormap, colorrange=(vmin, vmax))
             Colorbar(fig[1,2], limits=(vmin, vmax), colormap=colormap)
         end
     else 
@@ -1447,7 +1520,7 @@ function plot_cochain(cochain::Cochain, mesh::VoronoiMesh, colormap::Symbol=:vir
         end
     end
     #hidedecorations!(ax)
-    return fig
+    return ax
 end
 
 
@@ -1555,6 +1628,7 @@ end
 #println("values: ", d(mesh, discretize_vector_field_dual(mesh, v)).values)
 
 #Testing whitney_basis_functions
+#mesh = VoronoiMesh("meshes/mesh2_regular.nc")
 #basis_functions = whitney_basis_functions(mesh, false)
 #v = discretize_vector_field_dual(mesh, x -> [1.0, 0.0])
 #println(whitney_interpolation(mesh, v))    
@@ -1645,6 +1719,8 @@ end
 #   Testing least squares hodge star
 #-----------------------------------------------------------------------------------------------------------
 #mesh = VoronoiMesh("meshes/mesh3.nc")
+#xp = mesh.x_period
+#yp = mesh.y_period
 #println(typeof(mesh.edges.position))
 #Testing get_neighbors_1level_primal and get_neighbors_2level_primal-------------------------------------------
 #v = discretize_vector_field_primal(mesh, x -> [2, -1])
@@ -1656,8 +1732,8 @@ end
 #plot_neighbors(mesh, idx)
 # Testing rec_vector_field_lsq
 
-#v = discretize_vector_field_dual(mesh, x -> [3 - x[1]^2 + 2*x[2] - x[1]*x[2], -1 -x[1]^2 - 3* x[2]^2 + x[1]*x[2]])
-#v_dual = discretize_vector_field_primal(mesh, x -> [1 + x[1]^2 + 3*x[2]^2 - x[1]*x[2], 3 - x[1]^2 + 2*x[2] - x[1]*x[2]])
+#v = discretize_vector_field_dual(mesh, x -> [1 + x[1], -1 + x[2]^2])
+#v_dual = discretize_vector_field_primal(mesh, x -> [1 - x[2]^2, 1 + x[1]])
 #midpoints, values, tangent_vectors = get_edge_info(mesh, v)
 #reconstructed_vector, coefs, _ = rec_vector_field_lsq_13point(mesh, v, 8, verbose=true, primal_to_dual=true, hodge=true, only_linear=false)
 #println("Interpolation coefs: ", coefs)
@@ -1667,6 +1743,7 @@ end
 #println(maximum(abs.(discretize_vector_field_primal(mesh, reconstructed_vector).values - v_dual.values)))
 #println(maximum(abs.(rec_values.values - v_dual.values)))
 #println(maximum(abs.(hodge_star_lsq_matrix(mesh, true, false) * v.values - v_dual.values)))
+#println(size(hodge_star_lsq_matrix(mesh, true, false)))
 
 #Checking order of convergence
 

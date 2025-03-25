@@ -77,22 +77,35 @@ function laplacian_lsq(mesh::VoronoiMesh, u::Cochain{T}) where T
 end
 
 function test_laplacian()
-    error_list_diagonal = []
-    error_list_whitney = []
-    error_list_lsq = []
+    errorL2_list_diagonal = []
+    errorL2_list_whitney = []
+    errorL2_list_lsq = []
+    errorInf_list_diagonal = []
+    errorInf_list_whitney = []
+    errorInf_list_lsq = []
     edge_length_list = []
-    for i = 1:6
+    for i = 1:7
         #mesh = VoronoiMesh("meshes/mesh" * string(i) * "_regular.nc")
-        mesh = VoronoiMesh("meshes/mesh" * string(i) * "_regular.nc")
+        mesh = VoronoiMesh("meshes/mesh" * string(i) * ".nc")
         println("i = ", i)
         println("nCells: ", mesh.cells.n)
         println("nEdges: ", mesh.edges.n)
         println("nVertices: ", mesh.vertices.n)
         xp = mesh.x_period
         yp = mesh.y_period
+
+        a = Vector{Bool}(undef, mesh.cells.n)
+        for i = 1:mesh.cells.n
+            if mesh.cells.position[i][1] > 0.25 && mesh.cells.position[i][1] < 0.75 && mesh.cells.position[i][2] > 0.25 && mesh.cells.position[i][2] < 0.75
+                a[i] = true
+            else
+                a[i] = false
+            end
+        end
+
         #mesh = VoronoiMesh("meshes/mesh" * string(i) * "_regular.nc")
-        u = x -> sin(2*pi*x[1]/xp) * sin(2*pi*x[2]/yp)
-        true_laplacian = x -> -8*(pi^2)*sin(2*pi*x[1]/xp) * sin(2*pi*x[2]/yp)
+        u = x -> sin(4*pi*x[1]/xp) * sin(4*pi*x[2]/yp)
+        true_laplacian = x -> -16*(pi^2)*sin(4*pi*x[1]/xp) * sin(4*pi*x[2]/yp)*(xp^(-2) + yp^(-2))
 
         u_cochain = Cochain(u.(mesh.cells.position), 0, true)
         lap_cochain = Cochain(true_laplacian.(mesh.cells.position), 0, true)
@@ -101,20 +114,48 @@ function test_laplacian()
         lap_whitney = laplacian_whitney(mesh, u_cochain)
         lap_lsq = laplacian_lsq(mesh, u_cochain)
 
-        push!(error_list_diagonal, maximum(abs.(lap_diagonal.values - lap_cochain.values)))
-        #push!(error_list_diagonal, norm((lap_diagonal.values - lap_cochain.values) .* sqrt.(mesh.cells.area)))
-        push!(error_list_whitney, maximum(abs.(lap_whitney.values - lap_cochain.values)))
-        #push!(error_list_whitney, norm((lap_whitney.values - lap_cochain.values) .* sqrt.(mesh.cells.area)))
-        push!(error_list_lsq, maximum(abs.(lap_lsq.values - lap_cochain.values)))
-        #push!(error_list_lsq, norm((lap_lsq.values - lap_cochain.values) .* sqrt.(mesh.cells.area)))
+        push!(errorInf_list_diagonal, maximum(abs.(lap_diagonal.values - lap_cochain.values)[a]))
+        push!(errorL2_list_diagonal, norm((lap_diagonal.values - lap_cochain.values)[a] .* sqrt.(mesh.cells.area)[a]))
+        push!(errorInf_list_whitney, maximum(abs.(lap_whitney.values - lap_cochain.values)[a]))
+        push!(errorL2_list_whitney, norm((lap_whitney.values - lap_cochain.values)[a] .* sqrt.(mesh.cells.area)[a]))
+        push!(errorInf_list_lsq, maximum(abs.(lap_lsq.values - lap_cochain.values)[a]))
+        push!(errorL2_list_lsq, norm((lap_lsq.values - lap_cochain.values)[a] .* sqrt.(mesh.cells.area)[a]))
         push!(edge_length_list, maximum(mesh.edges.lengthDual))
-        println("--------------------------------")
+        println("i = ", i)
     end
 
-    println("Error list diagonal: ", error_list_diagonal)
-    println("Error list whitney: ", error_list_whitney)
-    println("Error list lsq: ", error_list_lsq)
-    println("Edge length list: ", edge_length_list)
+    for i = 2:length(errorInf_list_diagonal)
+        orderInf = log(errorInf_list_diagonal[i]/errorInf_list_diagonal[i-1]) / log(edge_length_list[i]/edge_length_list[i-1])
+        println("Order Inf diagonal between meshes $(i-1) and $i: $orderInf")
+    end
+
+    for i = 2:length(errorL2_list_diagonal)
+        orderL2 = log(errorL2_list_diagonal[i]/errorL2_list_diagonal[i-1]) / log(edge_length_list[i]/edge_length_list[i-1])
+        println("Order L2 diagonal between meshes $(i-1) and $i: $orderL2")
+    end
+
+    println("--------------------------------")
+    for i = 2:length(errorInf_list_whitney)
+        orderInf = log(errorInf_list_whitney[i]/errorInf_list_whitney[i-1]) / log(edge_length_list[i]/edge_length_list[i-1])
+        println("Order Inf whitney between meshes $(i-1) and $i: $orderInf")
+    end
+
+    for i = 2:length(errorL2_list_whitney)
+        orderL2 = log(errorL2_list_whitney[i]/errorL2_list_whitney[i-1]) / log(edge_length_list[i]/edge_length_list[i-1])
+        println("Order L2 whitney between meshes $(i-1) and $i: $orderL2")
+    end 
+
+    println("--------------------------------")
+    for i = 2:length(errorInf_list_lsq)
+        orderInf = log(errorInf_list_lsq[i]/errorInf_list_lsq[i-1]) / log(edge_length_list[i]/edge_length_list[i-1])
+        println("Order Inf lsq between meshes $(i-1) and $i: $orderInf")
+    end
+
+    for i = 2:length(errorL2_list_lsq)
+        orderL2 = log(errorL2_list_lsq[i]/errorL2_list_lsq[i-1]) / log(edge_length_list[i]/edge_length_list[i-1])
+        println("Order L2 lsq between meshes $(i-1) and $i: $orderL2")
+    end
 end
+
 
 test_laplacian()

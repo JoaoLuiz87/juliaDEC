@@ -53,29 +53,16 @@ println("Distorted mesh? (y/n)")
 dist = readline() == "y"
 
 if dist
-    mesh1 = VoronoiMesh(10, 1.0, 1.0)
+    mesh1 = VoronoiMesh(16, 1.0, 1.0, density = x-> 1.0, max_iter=10000)
     VoronoiMeshes.save("mesh1.nc", mesh1)
-    test_mesh = VoronoiMesh("mesh1.nc")
-    println(test_mesh.edges.lengthDual)
+    
 
-    mesh2 = VoronoiMesh(vcat(mesh1.cells.position, mesh1.edges.position), 1.0, 1.0)
+    mesh2 = VoronoiMesh(vcat(mesh1.cells.position, mesh1.edges.position), 1.0, 1.0, max_iter=20000)
     VoronoiMeshes.save("mesh2.nc", mesh2)
-
-    mesh3 = VoronoiMesh(vcat(mesh2.cells.position, mesh2.edges.position), 1.0, 1.0)
-    VoronoiMeshes.save("mesh3.nc", mesh3)
-
-    mesh4 = VoronoiMesh(vcat(mesh3.cells.position, mesh3.edges.position), 1.0, 1.0)
-    VoronoiMeshes.save("mesh4.nc", mesh4)
-
-    mesh5 = VoronoiMesh(vcat(mesh4.cells.position, mesh4.edges.position), 1.0, 1.0)
-    VoronoiMeshes.save("mesh5.nc", mesh5)
-
-    #mesh6 = VoronoiMesh(vcat(mesh5.cells.position, mesh5.edges.position), 1.0, 1.0)
-    #VoronoiMeshes.save("mesh6.nc", mesh6)
 
     edges1, ghost_edges1 = cell_linesegments(mesh1)
     edges2, ghost_edges2 = cell_linesegments(mesh2)
-
+    
     fig = GLMakie.Figure()
     ax = GLMakie.Axis(fig[1,1],aspect=GLMakie.DataAspect())
 
@@ -87,7 +74,22 @@ if dist
     GLMakie.linesegments!(ax,ghost_edges2[1],ghost_edges2[2],color=:red,linestyle=:dash)
     GLMakie.scatter!(ax,mesh2.cells.position.x,mesh2.cells.position.y,color=:red)
 
-    GLMakie.save("dist_mesh.png", fig)
+    GLMakie.save("mesh_dist.png", fig)
+
+    mesh3 = VoronoiMesh(vcat(mesh2.cells.position, mesh2.edges.position), 1.0, 1.0, max_iter=20000)
+    VoronoiMeshes.save("mesh3.nc", mesh3)
+
+    mesh4 = VoronoiMesh(vcat(mesh3.cells.position, mesh3.edges.position), 1.0, 1.0, max_iter=20000)
+    VoronoiMeshes.save("mesh4.nc", mesh4)
+
+    mesh5 = VoronoiMesh(vcat(mesh4.cells.position, mesh4.edges.position), 1.0, 1.0, max_iter=20000)
+    VoronoiMeshes.save("mesh5.nc", mesh5)
+
+    mesh6 = VoronoiMesh(vcat(mesh5.cells.position, mesh5.edges.position), 1.0, 1.0, max_iter=2000)
+    VoronoiMeshes.save("mesh6.nc", mesh6)
+
+    mesh7 = VoronoiMesh(vcat(mesh6.cells.position, mesh6.edges.position), 1.0, 1.0, max_iter=200)
+    VoronoiMeshes.save("mesh7.nc", mesh7)
 
 else
     mesh1 = VoronoiMesh(12, 1.0, 1.0)
@@ -95,6 +97,22 @@ else
 
     mesh2 = VoronoiMesh(vcat(mesh1.cells.position, mesh1.edges.position), 1.0, 1.0)
     VoronoiMeshes.save("mesh2_regular.nc", mesh2)
+    
+    edges1, ghost_edges1 = cell_linesegments(mesh1)
+    edges2, ghost_edges2 = cell_linesegments(mesh2)
+    
+    fig = GLMakie.Figure()
+    ax = GLMakie.Axis(fig[1,1],aspect=GLMakie.DataAspect())
+
+    GLMakie.linesegments!(ax,edges1[1],edges1[2],color=:deepskyblue3,linestyle=:solid)
+    GLMakie.linesegments!(ax,ghost_edges1[1],ghost_edges1[2],color=:deepskyblue3,linestyle=:dash)
+    GLMakie.scatter!(ax,mesh1.cells.position.x,mesh1.cells.position.y,color=:deepskyblue3)
+
+    GLMakie.linesegments!(ax,edges2[1],edges2[2],color=:red,linestyle=:solid)
+    GLMakie.linesegments!(ax,ghost_edges2[1],ghost_edges2[2],color=:red,linestyle=:dash)
+    GLMakie.scatter!(ax,mesh2.cells.position.x,mesh2.cells.position.y,color=:red)
+
+    GLMakie.save("regular_mesh.png", fig)
 
     mesh3 = VoronoiMesh(vcat(mesh2.cells.position, mesh2.edges.position), 1.0, 1.0)
     VoronoiMeshes.save("mesh3_regular.nc", mesh3)
@@ -111,21 +129,7 @@ else
     mesh7 = VoronoiMesh(vcat(mesh6.cells.position, mesh6.edges.position), 1.0, 1.0)
     VoronoiMeshes.save("mesh7_regular.nc", mesh7)
 
-    edges1, ghost_edges1 = cell_linesegments(mesh1)
-    edges2, ghost_edges2 = cell_linesegments(mesh2)
-
-    fig = GLMakie.Figure()
-    ax = GLMakie.Axis(fig[1,1],aspect=GLMakie.DataAspect())
-
-    GLMakie.linesegments!(ax,edges1[1],edges1[2],color=:deepskyblue3,linestyle=:solid)
-    GLMakie.linesegments!(ax,ghost_edges1[1],ghost_edges1[2],color=:deepskyblue3,linestyle=:dash)
-    GLMakie.scatter!(ax,mesh1.cells.position.x,mesh1.cells.position.y,color=:deepskyblue3)
-
-    GLMakie.linesegments!(ax,edges2[1],edges2[2],color=:red,linestyle=:solid)
-    GLMakie.linesegments!(ax,ghost_edges2[1],ghost_edges2[2],color=:red,linestyle=:dash)
-    GLMakie.scatter!(ax,mesh2.cells.position.x,mesh2.cells.position.y,color=:red)
-
-    GLMakie.save("regular_mesh.png", fig)
+    println("done")
 end
 
 
