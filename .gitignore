@@ -1,0 +1,16 @@
+# Large data (keep locally; sync separately if needed)
+*.jld2
+*.nc
+
+# Reference PDFs
+*.pdf
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Julia
+Manifest.toml
+
+# OS
+.DS_Store
+Thumbs.db
