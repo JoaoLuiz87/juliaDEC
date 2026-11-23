@@ -59,3 +59,8 @@ Some figure scripts read result files that other scripts write to `output/ts_dat
 ## History
 
 The repository was reorganised in November 2026. The earlier layout (flat files, a copy of VoronoiMeshes.jl, notebooks with outputs, mesh data) is in the branch `old-layout`. `scripts/barrier/gap_skew_more.jl` also needs the mesh family `meshes_felipe`, which is only in that branch.
+
+## License
+
+The code on this branch is released under the [MIT License](LICENSE). Two functions come from other MIT-licensed packages: see [THIRD_PARTY.md](THIRD_PARTY.md).
+The branch `old-layout` contains a copy of VoronoiMeshes.jl, which keeps the licence in its own folder.
