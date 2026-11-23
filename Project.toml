@@ -1,0 +1,30 @@
+# environment that runs scripts/ (Julia 1.12).  The favba/*.jl packages are not registered: they are taken from their repositories.
+[deps]
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+DelaunayTriangulation = "927a84f5-c5f4-47a5-9785-b46e178433df"
+GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
+IJulia = "7073ff75-c697-5162-941a-fcdaad2a7d2a"
+ImmutableVectors = "d6059b30-97e8-4ff2-b426-20b29c0469af"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+LowRankApprox = "898213cb-b102-5a47-900c-97e73b919f73"
+NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+QuadGK = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Serialization = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
+SmallCollections = "2b935e18-93d6-40ac-ae34-fe54c09f00e1"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+TensorsLite = "1a1b94bd-d244-45e0-965a-8acfeb92b70f"
+TensorsLiteGeometry = "f9cc0174-84f8-4243-a119-6cf6c33db921"
+VoronoiMeshes = "978c199f-fe38-4011-9fe6-317bc1cdd350"
+
+[sources]
+ImmutableVectors = {url = "https://github.com/favba/ImmutableVectors.jl.git", rev = "main"}
+TensorsLite = {url = "https://github.com/favba/TensorsLite.jl.git", rev = "main"}
+TensorsLiteGeometry = {url = "https://github.com/favba/TensorsLiteGeometry.jl.git", rev = "main"}
+VoronoiMeshes = {url = "https://github.com/favba/VoronoiMeshes.jl.git", rev = "main"}
+
+[compat]
+julia = "1.11"
