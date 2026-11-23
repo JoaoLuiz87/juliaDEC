@@ -1,6 +1,4 @@
-# scripts read other scripts as text (they look for "
-
-"), so line endings must be LF on every system
+# some scripts read others as text and look for blank lines, so line endings must be LF on every system
 * text=auto eol=lf
 *.nc binary
 *.png binary
