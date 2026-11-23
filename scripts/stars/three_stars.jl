@@ -1,6 +1,6 @@
 # ============================================================================
 #  three_stars.jl -- the three Hodge stars of three_stars_report.tex and the problems they are tested on.
-#  Library only (no output); used by three_stars_tests.jl, three_stars_run.jl and three_stars_figures.jl.
+#  Library only (no output).
 #
 #      H_DEC : diag(|e~|/|e|)                                                       exact on [P0]^2
 #      H_P1  : DEC + the smallest SYMMETRIC correction exact on [P1]^2, 3-ring       (symmetric_correction, commuting_check.jl)

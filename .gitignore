@@ -9,7 +9,8 @@ output/*_data/
 # meshes: only the small ones are versioned
 meshes/*.nc
 !meshes/mesh[1-6].nc
-!meshes/mesh[1-5]_regular.nc
+!meshes/mesh[1-6]_regular.nc
+!meshes/pert[1-6].nc
 
 # data, documents, editors
 *.jld2

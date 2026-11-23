@@ -75,7 +75,7 @@ function report!(key, D, mesh, Hd, C1, rows, r0; exactrows = nothing)
     return R[key]
 end
 
-if get(ENV, "LS_MAIN", "1") == "1"                  # LS_MAIN=0 only loads the functions (used by p2_min_asym_check.jl)
+if get(ENV, "LS_MAIN", "1") == "1"                  # LS_MAIN=0 only loads the functions
 for mn in LSM
     mesh = VoronoiMesh("meshes/$mn.nc"); S = cached_stars(mn; mesh); Hd = hdiag(mesh); C1 = S["H_P1"] - Hd
     t0 = time(); D = p1_rows(mesh); n = D.n

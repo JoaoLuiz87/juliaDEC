@@ -239,5 +239,5 @@ for (k, r, ms) in ((1, 3, ("mesh2", "mesh3", "mesh4", "mesh5")), (2, 4, ("mesh2"
 end
 end
 
-# PARTS="" only loads the functions (used by commuting_note_figures.jl)
+# PARTS="" only loads the functions
 isempty(lines) || write(joinpath(OUT, PARTS == "123" ? "commuting_check.txt" : "commuting_check_part$(PARTS).txt"), join(lines, "\n") * "\n")

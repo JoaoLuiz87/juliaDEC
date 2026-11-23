@@ -79,7 +79,7 @@ end
 let
     ms = ["mesh$i" for i in 1:7]; hs = [RR[(m, :h)] for m in ms]; f = Figure(size = (1560, 900), fontsize = 15); xt = (hs, ["1/$(round(Int, 1 / h))" for h in hs])
     function panel(pos, get, title, yl, slopes; ref = nothing)
-        ax = Axis(pos; xscale = log10, yscale = log10, xreversed = true, xticks = xt, yticks = LogTicks(IntegerTicks()), xlabel = "h", ylabel = yl, title = title, titlealign = :left, axstyle_th...)
+        ax = Axis(pos; xscale = log10, yscale = log10, xreversed = true, xticks = xt, xlabel = "h", ylabel = yl, title = title, titlealign = :left, axstyle_th...)
         for s in S3; scatterlines!(ax, hs, [get(m, s) for m in ms]; color = STARCOL[s], marker = STARMK[s], markersize = 11, linewidth = 2, label = s); end
         for (k, a) in slopes; xx = [hs[3], hs[7]]; lines!(ax, xx, a .* (xx ./ xx[1]) .^ k; color = INK2, linestyle = :dot); text!(ax, hs[7], a * (hs[7] / hs[3])^k; text = " h" * Dict(1 => "", 2 => "²", 3 => "³", 4 => "⁴")[k], align = (:left, :center), color = INK2); end
         return ax

@@ -250,5 +250,5 @@ for (col, B, ttl) in ((1, Mt.BA, "(a) no symmetry: each row alone"), (2, Mt.BK, 
 end
 Colorbar(f3[1, 4]; colormap = Reverse(:viridis), limits = (lo3, 0), label = "log₁₀ |block| / largest (white: zero)", width = 12)
 CairoMakie.save(thesis_out("fig_st_realmatrix.png"), f3; px_per_unit = 2)
-write(joinpath(TSDIR, "story_realrow.txt"), join(OUT, "\n") * "\n")
+write(joinpath(TSDIR, "story_realrow.txt"), join(OUTR, "\n") * "\n")
 println("real-row figures written")

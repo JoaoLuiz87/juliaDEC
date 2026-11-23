@@ -110,7 +110,7 @@ R4(z) = 1 + z + z^2 / 2 + z^3 / 6 + z^4 / 24
 rk4_amp(λ, dt) = maximum(max(abs(R4(dt * im * s)), abs(R4(-dt * im * s))) for s in sqrt.(complex.(λ)))
 
 # ============================================================================
-if get(ENV, "SW_MAIN", "1") == "1"                  # SW_MAIN=0 only loads the functions (used by sw_swept_check.jl)
+if get(ENV, "SW_MAIN", "1") == "1"                  # SW_MAIN=0 only loads the functions
 logp("Linear shallow water, f = 0, g = H0 = 1, on the SCVT meshes. Stars: DEC, the symmetric [P1]^2 star (3-ring),")
 logp("and DEC + the smallest row-wise correction exact on [P2]^2 (ns P2, not symmetric).")
 

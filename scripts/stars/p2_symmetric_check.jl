@@ -18,7 +18,7 @@
 include(joinpath(@__DIR__, "three_stars.jl"))         # tri_layers, ring(mesh, e, :t2 | :t3), STENCILS, SNAME
 empty!(lines)
 
-# independent row-exactness check (same as T3 of three_stars_tests.jl)
+# independent row-exactness check
 const GL5X = [-0.9061798459386640, -0.5384693101056831, 0.0, 0.5384693101056831, 0.9061798459386640]
 const GL5W = [0.2369268850561891, 0.4786286704993665, 0.5688888888888889, 0.4786286704993665, 0.2369268850561891]
 segint(F, a, b, τ) = norm(b .- a) * sum(w / 2 * dot(F(a .+ (ξ + 1) / 2 .* (b .- a)), τ) for (ξ, w) in zip(GL5X, GL5W))

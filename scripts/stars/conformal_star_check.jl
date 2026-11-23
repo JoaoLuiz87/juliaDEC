@@ -26,7 +26,7 @@ function conformal_star(mesh; tris_D1 = triangles_ccw(mesh))
     return hdiag(mesh) - D1' * Diagonal(m) * D1
 end
 
-# rows exact on a field?  (independent check, as T3 of three_stars_tests.jl: own 5-point rule and own tangents)
+# rows exact on a field?  (independent check: own 5-point rule and own tangents)
 function row_residual(mesh, H, F, rows)
     Ht = sparse(H'); worst = 0.0
     for e in rows

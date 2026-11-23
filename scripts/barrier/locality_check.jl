@@ -93,7 +93,7 @@ function influence(build, meshes, geo0, ε, h)
     return bins
 end
 
-if get(ENV, "LOC_MAIN", "1") == "1"                # LOC_MAIN=0 only loads the functions (used by locality_subspace_check.jl)
+if get(ENV, "LOC_MAIN", "1") == "1"                # LOC_MAIN=0 only loads the functions
 R = Dict{Any,Any}()
 for mn in ("mesh4", "mesh5")
     mesh = VoronoiMesh("meshes/$mn.nc"); h = meshsize(mesh)

@@ -14,7 +14,7 @@
 #  which vanishes for constant q on every mesh (mass–tracer consistency).
 #
 #  Discrete interior products F̃ = K(u) ρ̄  (ρ̄_c = ρ̃_c / A_c, the cell value; K: cells -> edges):
-#    "DEC"     wedge, then Hodge:  F̃ = H (ρ ∧ v),  (ρ ∧ v)_e = ½(ρ̄_a + ρ̄_b) v_e        (Hirani; juliaDEC advection.jl)
+#    "DEC"     wedge, then Hodge:  F̃ = H (ρ ∧ v),  (ρ ∧ v)_e = ½(ρ̄_a + ρ̄_b) v_e        (Hirani)
 #    "TRiSK"   Hodge, then wedge:  F̃ = ρ^e ⊙ (H v),  ρ^e = ½(ρ̄_a + ρ̄_b)                  (Ringler et al. 2010)
 #    "Ham"     F̃ = ½[ρ^e ⊙ H v + H(ρ ∧ v)]   the Hamiltonian mass flux of Eldred & Bauer (2022), eq. 99
 #    "Peixoto" F̃ = ρ^e ⊙ (H v),  ρ^e = barycentric interpolation at the Voronoi-edge midpoint m̃_e   (Peixoto 2016, §3.1)
